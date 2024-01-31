@@ -35,6 +35,7 @@ function GamePage() {
 
         setBoard(copyBoard);
         setFlag(!flag);
+        isWinner();
     }
 
 
@@ -45,11 +46,10 @@ function GamePage() {
             ["", "", ""],
         ];
         setBoard(newBoard);
-
     }
 
     // Checking Winner
-    useEffect(() => {
+    function isWinner() {
         // Check Horizontal Wins
         for (let i = 0; i < 3; i++) {
             if (board[i][0] && board[i][0] === board[i][1] && board[i][0] === board[i][2]) {
@@ -80,12 +80,29 @@ function GamePage() {
         if (!board.flat().includes("")) {
             alert("It's a draw!");
         }
-    }, [board]);
-
+    }
 
 
     return (
-        <div className='flex justify-center items-center w-full h-[100vh]'>
+        <div className='flex justify-center flex-col gap-10 items-center w-full h-[100vh]'>
+
+            {/* infobox */}
+            <div className='flex justify-center gap-20 items-center w-full'>
+                {/* turn */}
+                <div className='bg-[white]/[0.15] px-10 py-2 rounded-md text-[white]/[0.7] font-semibold'>
+                    <p>Turn : <span>{flag ? "Player-1" : "Player-2"}</span></p>
+                </div>
+
+                {/* reset */}
+                <div>
+                    <button
+                        onClick={resetFunctionality}
+                        className='px-10 py-2 bg-[white]/[0.15] text-[white]/[0.7] rounded-md font-semibold'
+                    >Reset</button>
+                </div>
+            </div>
+
+            {/*  game */}
             <div
                 className=' bg-[white]/[0.15] p-2 rounded-md'
             >
@@ -95,16 +112,14 @@ function GamePage() {
                             className='flex'
                         >
                             {
-                                row.map((box, indexj) => (
+                                row.map((col, indexj) => (
                                     <div className='flex flex-col p-2'>
                                         <button
                                             onClick={() => clickHandler(indexi, indexj)}
-                                            className='w-[100px] flex text-white text-xl justify-center items-center h-[100px] rounded-lg bg-black'
+                                            className={`w-[100px] text-white flex text-2xl font-bold justify-center items-center h-[100px] rounded-lg bg-black `}
                                         >
-                                            <span className=''>
-                                                {
-                                                    box === "" ? "" : box
-                                                }
+                                            <span>
+                                                {col}
                                             </span>
                                         </button>
                                     </div>
