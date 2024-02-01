@@ -1,136 +1,91 @@
 import React, { useEffect, useState } from 'react';
-
+import socketIOClient from 'socket.io-client';
 
 function GamePage() {
+    const [board, setBoard] = useState([
+        ["", "", ""],
+        ["", "", ""],
+        ["", "", ""],
+    ]);
 
-    const [flag, setFlag] = useState(false);
-
-    const [board, setBoard] = useState(
-        [
-            ["", "", ""],
-            ["", "", ""],
-            ["", "", ""],
-        ]
-    );
+    const [currentPlayer, setCurrentPlayer] = useState("X");
+    const [gameOver, setGameOver] = useState(false);
+    const [socket, setSocket] = useState(null);
+    const [message, setMessage] = useState('');
 
     useEffect(() => {
-        // for getting the first chance 
-        const num = Math.random();
-        if (num > 0.5) {
-            setFlag(true);
-        } else {
-            setFlag(false);
-        }
+        const newSocket = socketIOClient('/');
+
+        newSocket.on('initialBoard', initialBoard => {
+            setBoard(initialBoard);
+        });
+
+        newSocket.on('updateBoard', ({ board, currentPlayer }) => {
+            setBoard(board);
+            setCurrentPlayer(currentPlayer);
+        });
+
+        newSocket.on('gameOver', ({ winner, draw }) => {
+            if (winner) {
+                setMessage(`Player ${winner} wins!`);
+            } else if (draw) {
+                setMessage("It's a draw!");
+            }
+            setGameOver(true);
+        });
+
+        newSocket.on('error', (error) => {
+            console.error('Socket error:', error);
+            setMessage('Socket error occurred');
+        });
+
+        setSocket(newSocket);
+
+        return () => newSocket.disconnect();
     }, []);
 
-
-    function clickHandler(i, j) {
-
-        if (board[i][j] !== "") return;
-
-        const valueOnBoard = flag ? "X" : "O";
-
-        const copyBoard = [...board];
-        copyBoard[i][j] = valueOnBoard;
-
-        setBoard(copyBoard);
-        setFlag(!flag);
-        isWinner();
-    }
-
-
-    function resetFunctionality() {
-        const newBoard = [
-            ["", "", ""],
-            ["", "", ""],
-            ["", "", ""],
-        ];
-        setBoard(newBoard);
-    }
-
-    // Checking Winner
-    function isWinner() {
-        // Check Horizontal Wins
-        for (let i = 0; i < 3; i++) {
-            if (board[i][0] && board[i][0] === board[i][1] && board[i][0] === board[i][2]) {
-                alert(`${board[i][0]} is the winner!`);
-                return;
-            }
+    const clickHandler = (i, j) => {
+        if (!gameOver && board[i][j] === "") {
+            socket.emit('move', { row: i, col: j });
         }
+    };
 
-        // Check Vertical Wins
-        for (let j = 0; j < 3; j++) {
-            if (board[0][j] && board[0][j] === board[1][j] && board[0][j] === board[2][j]) {
-                alert(`${board[0][j]} is the winner!`);
-                return;
-            }
-        }
-
-        // Check Diagonal Wins
-        if (board[0][0] && board[0][0] === board[1][1] && board[0][0] === board[2][2]) {
-            alert(`${board[0][0]} is the winner!`);
-            return;
-        }
-        if (board[0][2] && board[0][2] === board[1][1] && board[0][2] === board[2][0]) {
-            alert(`${board[0][2]} is the winner!`);
-            return;
-        }
-
-        // Check for Draw
-        if (!board.flat().includes("")) {
-            alert("It's a draw!");
-        }
-    }
-
+    const resetGame = () => {
+        setGameOver(false);
+        setMessage('');
+        socket.emit('reset');
+    };
 
     return (
         <div className='flex justify-center flex-col gap-10 items-center w-full h-[100vh]'>
-
-            {/* infobox */}
-            <div className='flex justify-center gap-20 items-center w-full'>
-                {/* turn */}
-                <div className='bg-[white]/[0.15] px-10 py-2 rounded-md text-[white]/[0.7] font-semibold'>
-                    <p>Turn : <span>{flag ? "Player-1" : "Player-2"}</span></p>
-                </div>
-
-                {/* reset */}
-                <div>
-                    <button
-                        onClick={resetFunctionality}
-                        className='px-10 py-2 bg-[white]/[0.15] text-[white]/[0.7] rounded-md font-semibold'
-                    >Reset</button>
-                </div>
+            {message && <div className="message">{message}</div>}
+            <div className='bg-[white]/[0.15] p-2 rounded-md'>
+                {board.map((row, i) => (
+                    <div key={i} className='flex'>
+                        {row.map((col, j) => (
+                            <div key={`${i}-${j}`} className='flex flex-col p-2'>
+                                <button
+                                    onClick={() => clickHandler(i, j)}
+                                    disabled={col !== "" || gameOver}
+                                    className={`w-[100px] text-white flex text-2xl font-bold justify-center items-center h-[100px] rounded-lg bg-black `}
+                                >
+                                    <span>{col}</span>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                ))}
             </div>
-
-            {/*  game */}
-            <div
-                className=' bg-[white]/[0.15] p-2 rounded-md'
-            >
-                {
-                    board.map((row, indexi) => (
-                        <div
-                            className='flex'
-                        >
-                            {
-                                row.map((col, indexj) => (
-                                    <div className='flex flex-col p-2'>
-                                        <button
-                                            onClick={() => clickHandler(indexi, indexj)}
-                                            className={`w-[100px] text-white flex text-2xl font-bold justify-center items-center h-[100px] rounded-lg bg-black `}
-                                        >
-                                            <span>
-                                                {col}
-                                            </span>
-                                        </button>
-                                    </div>
-                                ))
-                            }
-                        </div>
-                    ))
-                }
+            <div className='bg-[white]/[0.15] px-10 py-2 rounded-md text-[white]/[0.7] font-semibold'>
+                <p>Turn: {currentPlayer === "X" ? "Player 1" : "Player 2"}</p>
+                {gameOver && (
+                    <button onClick={resetGame} className='mt-2 px-4 py-2 bg-[white]/[0.15] text-[white]/[0.7] rounded-md font-semibold'>
+                        Reset Game
+                    </button>
+                )}
             </div>
         </div>
-    )
+    );
 }
 
-export default GamePage
+export default GamePage;
